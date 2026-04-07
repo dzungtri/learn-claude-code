@@ -1,5 +1,5 @@
 export const VERSION_ORDER = [
-  "s01", "s02", "s03", "s04", "s05", "s06", "s07", "s08", "s09", "s10", "s11", "s12"
+  "s00", "s01", "s02", "s03", "s04", "s05", "s06", "s07", "s08", "s09", "s10", "s11", "s12"
 ] as const;
 
 export const LEARNING_PATH = VERSION_ORDER;
@@ -14,7 +14,8 @@ export const VERSION_META: Record<string, {
   layer: "tools" | "planning" | "memory" | "concurrency" | "collaboration";
   prevVersion: string | null;
 }> = {
-  s01: { title: "The Agent Loop", subtitle: "Bash is All You Need", coreAddition: "Single-tool agent loop", keyInsight: "The minimal agent kernel is a while loop + one tool", layer: "tools", prevVersion: null },
+  s00: { title: "LLM Foundation", subtitle: "Inspect the Reply First", coreAddition: "Direct messages.create() inspection", keyInsight: "Before there is an agent loop, there is only messages in and structured content blocks out", layer: "tools", prevVersion: null },
+  s01: { title: "The Agent Loop", subtitle: "Bash is All You Need", coreAddition: "Single-tool agent loop", keyInsight: "The minimal agent kernel is a while loop + one tool", layer: "tools", prevVersion: "s00" },
   s02: { title: "Tools", subtitle: "One Handler Per Tool", coreAddition: "Tool dispatch map", keyInsight: "The loop stays the same; new tools register into the dispatch map", layer: "tools", prevVersion: "s01" },
   s03: { title: "TodoWrite", subtitle: "Plan Before You Act", coreAddition: "TodoManager + nag reminder", keyInsight: "An agent without a plan drifts; list the steps first, then execute", layer: "planning", prevVersion: "s02" },
   s04: { title: "Subagents", subtitle: "Clean Context Per Subtask", coreAddition: "Subagent spawn with isolated messages[]", keyInsight: "Subagents use independent messages[], keeping the main conversation clean", layer: "planning", prevVersion: "s03" },
@@ -29,7 +30,7 @@ export const VERSION_META: Record<string, {
 };
 
 export const LAYERS = [
-  { id: "tools" as const, label: "Tools & Execution", color: "#3B82F6", versions: ["s01", "s02"] },
+  { id: "tools" as const, label: "Tools & Execution", color: "#3B82F6", versions: ["s00", "s01", "s02"] },
   { id: "planning" as const, label: "Planning & Coordination", color: "#10B981", versions: ["s03", "s04", "s05", "s07"] },
   { id: "memory" as const, label: "Memory Management", color: "#8B5CF6", versions: ["s06"] },
   { id: "concurrency" as const, label: "Concurrency", color: "#F59E0B", versions: ["s08"] },

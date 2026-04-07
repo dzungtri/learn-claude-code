@@ -6,6 +6,7 @@ import { useTranslations, useLocale } from "@/lib/i18n";
 import { ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 
+import s00Annotations from "@/data/annotations/s00.json";
 import s01Annotations from "@/data/annotations/s01.json";
 import s02Annotations from "@/data/annotations/s02.json";
 import s03Annotations from "@/data/annotations/s03.json";
@@ -34,6 +35,7 @@ interface AnnotationFile {
 }
 
 const ANNOTATIONS: Record<string, AnnotationFile> = {
+  s00: s00Annotations as AnnotationFile,
   s01: s01Annotations as AnnotationFile,
   s02: s02Annotations as AnnotationFile,
   s03: s03Annotations as AnnotationFile,

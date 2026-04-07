@@ -1,0 +1,47 @@
+{
+  "version": "s00",
+  "decisions": [
+    {
+      "id": "inspect-before-loop",
+      "title": "Inspect the Raw Reply Before Building the Loop",
+      "description": "s00 isolates the model call from the agent loop so learners can see the exact contract: messages go in, typed content blocks come back. That prevents the later while-loop from feeling magical. Once you understand that `text` and `tool_use` are just response blocks, the rest of the harness becomes ordinary control flow.",
+      "alternatives": "We could have started directly at s01, but then `tool_use` looks like a special runtime event instead of ordinary structured output from the API.",
+      "zh": {
+        "title": "先看原始回复，再构建循环",
+        "description": "s00 先把模型调用与 agent 循环拆开，让学习者看清最基本的契约：`messages` 输入，带类型的 `content blocks` 输出。这样后面的 while 循环就不会显得像魔法。理解 `text` 和 `tool_use` 只是响应块之后，其余部分就只是普通控制流。"
+      },
+      "ja": {
+        "title": "ループを作る前に生の応答を観察する",
+        "description": "s00 ではモデル呼び出しをエージェントループから切り離し、`messages` を渡すと型付きの `content blocks` が返るという契約をそのまま見せます。これにより、後の while ループが魔法のように見えなくなります。`text` と `tool_use` が単なる応答ブロックだと分かれば、残りは普通の制御フローです。"
+      }
+    },
+    {
+      "id": "show-tool-blocks-without-running",
+      "title": "Show Tool Blocks Without Executing Them",
+      "description": "s00 still declares a `bash` tool so the model is allowed to emit `tool_use` blocks, but the harness deliberately stops at inspection. This teaches the crucial boundary: the model proposes actions, the harness decides whether to execute them.",
+      "alternatives": "Removing tools entirely would simplify the example, but then learners would not see the exact `tool_use` structure that powers the later agent loop.",
+      "zh": {
+        "title": "展示工具块，但不执行",
+        "description": "s00 仍然声明了 `bash` 工具，让模型可以返回 `tool_use` 块，但 harness 故意只做观察，不执行。这能清楚展示边界：模型负责提出动作，harness 决定是否执行。"
+      },
+      "ja": {
+        "title": "ツールブロックは見せるが実行しない",
+        "description": "s00 でも `bash` ツールを宣言し、モデルが `tool_use` ブロックを返せるようにしています。ただしハーネスは観察で止め、実行はしません。ここで学ぶべき境界は、モデルが行動を提案し、実行するかどうかはハーネスが決めるという点です。"
+      }
+    },
+    {
+      "id": "no-incomplete-history",
+      "title": "Do Not Persist an Unfinished Tool Turn",
+      "description": "If a response ends in `tool_use` and you save it without a matching `tool_result`, the next API call is carrying an incomplete conversation state. s00 avoids that by treating tool-using replies as inspect-only examples, not durable history.",
+      "alternatives": "We could append the incomplete assistant turn anyway, but that teaches the wrong lesson and can produce invalid follow-up requests.",
+      "zh": {
+        "title": "不要保存未完成的工具回合",
+        "description": "如果响应以 `tool_use` 结束，却没有对应的 `tool_result`，那么下一次 API 调用就会带着不完整的对话状态。s00 通过把这类回复当作“只观察的示例”，而不是持久历史，避免了这个问题。"
+      },
+      "ja": {
+        "title": "未完了のツールターンを保存しない",
+        "description": "応答が `tool_use` で終わっているのに対応する `tool_result` が無いまま保存すると、次の API 呼び出しは不完全な会話状態を引きずることになります。s00 ではそれを避けるため、ツール使用応答は履歴ではなく観察用サンプルとして扱います。"
+      }
+    }
+  ]
+}

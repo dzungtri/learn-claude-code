@@ -9,6 +9,7 @@ import { SimulatorMessage } from "./simulator-message";
 import type { Scenario } from "@/types/agent-data";
 
 const scenarioModules: Record<string, () => Promise<{ default: Scenario }>> = {
+  s00: () => import("@/data/scenarios/s00.json") as Promise<{ default: Scenario }>,
   s01: () => import("@/data/scenarios/s01.json") as Promise<{ default: Scenario }>,
   s02: () => import("@/data/scenarios/s02.json") as Promise<{ default: Scenario }>,
   s03: () => import("@/data/scenarios/s03.json") as Promise<{ default: Scenario }>,

@@ -1,0 +1,38 @@
+{
+  "version": "s00",
+  "title": "LLM Foundation",
+  "description": "One direct model call that prints stop_reason and content blocks before any tool execution exists",
+  "steps": [
+    {
+      "type": "user_message",
+      "content": "Use bash to print the current directory. Do not explain after the tool call.",
+      "annotation": "The user pushes one plain message into messages[]"
+    },
+    {
+      "type": "system_event",
+      "content": "client.messages.create(\n  model=MODEL,\n  system=SYSTEM,\n  messages=history + [user_message],\n  tools=[bash],\n  max_tokens=2000,\n)",
+      "annotation": "s00 makes one direct API call. No while loop yet."
+    },
+    {
+      "type": "assistant_text",
+      "content": "The assistant response body arrives as typed content blocks, not as magic runtime behavior.",
+      "annotation": "First thing to inspect: response.content[] is structured data"
+    },
+    {
+      "type": "tool_call",
+      "content": "{\n  \"command\": \"pwd\"\n}",
+      "toolName": "bash",
+      "annotation": "The model proposes a tool action by emitting a tool_use block with name + params"
+    },
+    {
+      "type": "system_event",
+      "content": "stop_reason: tool_use\ncontent_blocks: 1\n\nBlock 1\n[tool_use]\ntool_name: bash\ntool_params:\n{\n  \"command\": \"pwd\"\n}",
+      "annotation": "s00 prints the raw reply shape: stop_reason, block type, tool name, and tool params"
+    },
+    {
+      "type": "system_event",
+      "content": "s00 stops here on purpose.\ns01 is the chapter that executes the tool and appends tool_result.",
+      "annotation": "The harness observes the tool request but does not execute it yet"
+    }
+  ]
+}

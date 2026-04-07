@@ -11,6 +11,22 @@ const COL_LEFT = 140;
 const COL_RIGHT = FLOW_WIDTH - 140;
 
 export const EXECUTION_FLOWS: Record<string, FlowDefinition> = {
+  s00: {
+    nodes: [
+      { id: "start", label: "User Input", type: "start", x: COL_CENTER, y: 30 },
+      { id: "llm", label: "LLM Call", type: "process", x: COL_CENTER, y: 110 },
+      { id: "inspect", label: "Inspect\nresponse.content[]", type: "process", x: COL_CENTER, y: 190 },
+      { id: "tool_check", label: "tool_use?", type: "decision", x: COL_CENTER, y: 280 },
+      { id: "end", label: "Print + Stop", type: "end", x: COL_CENTER, y: 380 },
+    ],
+    edges: [
+      { from: "start", to: "llm" },
+      { from: "llm", to: "inspect" },
+      { from: "inspect", to: "tool_check" },
+      { from: "tool_check", to: "end", label: "yes: observe only" },
+      { from: "tool_check", to: "end", label: "no: print text" },
+    ],
+  },
   s01: {
     nodes: [
       { id: "start", label: "User Input", type: "start", x: COL_CENTER, y: 30 },

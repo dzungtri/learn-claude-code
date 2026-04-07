@@ -1,17 +1,45 @@
 {
   "versions": [
     {
-      "id": "s01",
-      "filename": "s01_agent_loop.py",
-      "title": "The Agent Loop",
-      "subtitle": "Bash is All You Need",
-      "loc": 95,
+      "id": "s00",
+      "filename": "s00_llm_foundation.py",
+      "title": "LLM Foundation",
+      "subtitle": "Inspect the Reply First",
+      "loc": 97,
       "tools": [
         "bash"
       ],
       "newTools": [
         "bash"
       ],
+      "coreAddition": "Direct messages.create() inspection",
+      "keyInsight": "Before there is an agent loop, there is only messages in and structured content blocks out",
+      "classes": [],
+      "functions": [
+        {
+          "name": "dump_block",
+          "signature": "def dump_block(block)",
+          "startLine": 61
+        },
+        {
+          "name": "inspect_once",
+          "signature": "def inspect_once(history: list, query: str)",
+          "startLine": 84
+        }
+      ],
+      "layer": "tools",
+      "source": "#!/usr/bin/env python3\n# Harness: direct model call -- inspect the reply before building the loop.\n\"\"\"\ns00_llm_foundation.py - LLM Foundation\n\nBefore an agent can run tools, it needs one simpler idea:\nan LLM reply is a structured message body with content blocks.\n\n    messages[] ----> LLM ----> response\n                               |\n                               +--> stop_reason\n                               +--> text block(s)\n                               +--> tool_use block(s)\n\nKey insight: a tool call is just data in the response body until\nyour harness chooses to execute it.\n\"\"\"\n\nimport json\nimport os\n\ntry:\n    import readline\n    # #143 UTF-8 backspace fix for macOS libedit\n    readline.parse_and_bind('set bind-tty-special-chars off')\n    readline.parse_and_bind('set input-meta on')\n    readline.parse_and_bind('set output-meta on')\n    readline.parse_and_bind('set convert-meta off')\n    readline.parse_and_bind('set enable-meta-keybindings on')\nexcept ImportError:\n    pass\n\nfrom anthropic import Anthropic\nfrom dotenv import load_dotenv\n\nload_dotenv(override=True)\n\nif os.getenv(\"ANTHROPIC_BASE_URL\"):\n    os.environ.pop(\"ANTHROPIC_AUTH_TOKEN\", None)\n\nclient = Anthropic(base_url=os.getenv(\"ANTHROPIC_BASE_URL\"))\nMODEL = os.environ[\"MODEL_ID\"]\n\nSYSTEM = (\n    f\"You are a coding assistant at {os.getcwd()}. \"\n    \"Keep replies compact. If a tool would help, you may emit a tool call.\"\n)\n\nTOOLS = [{\n    \"name\": \"bash\",\n    \"description\": \"Run a shell command.\",\n    \"input_schema\": {\n        \"type\": \"object\",\n        \"properties\": {\"command\": {\"type\": \"string\"}},\n        \"required\": [\"command\"],\n    },\n}\n]\n\n\ndef dump_block(block) -> None:\n    print(f\"[{block.type}]\")\n    if block.type == \"text\":\n        text = block.text.strip() or \"(empty text)\"\n        print(\"msg:\")\n        print(text)\n        return\n\n    if block.type == \"tool_use\":\n        print(f\"tool_name: {block.name}\")\n        print(f\"tool_use_id: {block.id}\")\n        print(\"tool_params:\")\n        print(json.dumps(block.input, indent=2, ensure_ascii=False))\n        return\n\n    print(\"raw_block:\")\n    if hasattr(block, \"model_dump\"):\n        print(json.dumps(block.model_dump(), indent=2,\n              ensure_ascii=False, default=str))\n    else:\n        print(str(block))\n\n\ndef inspect_once(history: list, query: str) -> None:\n    messages = history + [{\"role\": \"user\", \"content\": query}]\n    response = client.messages.create(\n        model=MODEL,\n        system=SYSTEM,\n        messages=messages,\n        tools=TOOLS,\n        max_tokens=2000,\n    )\n\n    print(\"\\n=== Assistant Response ===\")\n    print(f\"stop_reason: {response.stop_reason}\")\n    print(f\"content_blocks: {len(response.content)}\")\n    print()\n\n    for idx, block in enumerate(response.content, start=1):\n        print(f\"Block {idx}\")\n        dump_block(block)\n        print()\n\n    if response.stop_reason == \"tool_use\":\n        print(\"s00 stops here on purpose.\")\n        print(\"s01 adds the loop that executes the tool and sends tool_result back.\")\n        print(\"This unfinished tool turn is not saved into chat history.\")\n        return\n\n    history.append({\"role\": \"user\", \"content\": query})\n    history.append({\"role\": \"assistant\", \"content\": response.content})\n\n\nif __name__ == \"__main__\":\n    history = []\n    while True:\n        try:\n            query = input(\"\\033[36ms00 _> \\033[0m\")\n        except (EOFError, KeyboardInterrupt):\n            break\n        if query.strip().lower() in (\"q\", \"exit\", \"\"):\n            break\n        inspect_once(history, query)\n"
+    },
+    {
+      "id": "s01",
+      "filename": "s01_agent_loop.py",
+      "title": "The Agent Loop",
+      "subtitle": "Bash is All You Need",
+      "loc": 99,
+      "tools": [
+        "bash"
+      ],
+      "newTools": [],
       "coreAddition": "Single-tool agent loop",
       "keyInsight": "The minimal agent kernel is a while loop + one tool",
       "classes": [],
@@ -24,11 +52,11 @@
         {
           "name": "agent_loop",
           "signature": "def agent_loop(messages: list)",
-          "startLine": 81
+          "startLine": 83
         }
       ],
       "layer": "tools",
-      "source": "#!/usr/bin/env python3\n# Harness: the loop -- the model's first connection to the real world.\n\"\"\"\ns01_agent_loop.py - The Agent Loop\n\nThe entire secret of an AI coding agent in one pattern:\n\n    while stop_reason == \"tool_use\":\n        response = LLM(messages, tools)\n        execute tools\n        append results\n\n    +----------+      +-------+      +---------+\n    |   User   | ---> |  LLM  | ---> |  Tool   |\n    |  prompt  |      |       |      | execute |\n    +----------+      +---+---+      +----+----+\n                          ^               |\n                          |   tool_result |\n                          +---------------+\n                          (loop continues)\n\nThis is the core loop: feed tool results back to the model\nuntil the model decides to stop. Production agents layer\npolicy, hooks, and lifecycle controls on top.\n\"\"\"\n\nimport os\nimport subprocess\n\ntry:\n    import readline\n    # #143 UTF-8 backspace fix for macOS libedit\n    readline.parse_and_bind('set bind-tty-special-chars off')\n    readline.parse_and_bind('set input-meta on')\n    readline.parse_and_bind('set output-meta on')\n    readline.parse_and_bind('set convert-meta off')\n    readline.parse_and_bind('set enable-meta-keybindings on')\nexcept ImportError:\n    pass\n\nfrom anthropic import Anthropic\nfrom dotenv import load_dotenv\n\nload_dotenv(override=True)\n\nif os.getenv(\"ANTHROPIC_BASE_URL\"):\n    os.environ.pop(\"ANTHROPIC_AUTH_TOKEN\", None)\n\nclient = Anthropic(base_url=os.getenv(\"ANTHROPIC_BASE_URL\"))\nMODEL = os.environ[\"MODEL_ID\"]\n\nSYSTEM = f\"You are a coding agent at {os.getcwd()}. Use bash to solve tasks. Act, don't explain.\"\n\nTOOLS = [{\n    \"name\": \"bash\",\n    \"description\": \"Run a shell command.\",\n    \"input_schema\": {\n        \"type\": \"object\",\n        \"properties\": {\"command\": {\"type\": \"string\"}},\n        \"required\": [\"command\"],\n    },\n}]\n\n\ndef run_bash(command: str) -> str:\n    dangerous = [\"rm -rf /\", \"sudo\", \"shutdown\", \"reboot\", \"> /dev/\"]\n    if any(d in command for d in dangerous):\n        return \"Error: Dangerous command blocked\"\n    try:\n        r = subprocess.run(command, shell=True, cwd=os.getcwd(),\n                           capture_output=True, text=True, timeout=120)\n        out = (r.stdout + r.stderr).strip()\n        return out[:50000] if out else \"(no output)\"\n    except subprocess.TimeoutExpired:\n        return \"Error: Timeout (120s)\"\n    except (FileNotFoundError, OSError) as e:\n        return f\"Error: {e}\"\n\n\n# -- The core pattern: a while loop that calls tools until the model stops --\ndef agent_loop(messages: list):\n    while True:\n        response = client.messages.create(\n            model=MODEL, system=SYSTEM, messages=messages,\n            tools=TOOLS, max_tokens=8000,\n        )\n        # Append assistant turn\n        messages.append({\"role\": \"assistant\", \"content\": response.content})\n        # If the model didn't call a tool, we're done\n        if response.stop_reason != \"tool_use\":\n            return\n        # Execute each tool call, collect results\n        results = []\n        for block in response.content:\n            if block.type == \"tool_use\":\n                print(f\"\\033[33m$ {block.input['command']}\\033[0m\")\n                output = run_bash(block.input[\"command\"])\n                print(output[:200])\n                results.append({\"type\": \"tool_result\", \"tool_use_id\": block.id,\n                                \"content\": output})\n        messages.append({\"role\": \"user\", \"content\": results})\n\n\nif __name__ == \"__main__\":\n    history = []\n    while True:\n        try:\n            query = input(\"\\033[36ms01 >> \\033[0m\")\n        except (EOFError, KeyboardInterrupt):\n            break\n        if query.strip().lower() in (\"q\", \"exit\", \"\"):\n            break\n        history.append({\"role\": \"user\", \"content\": query})\n        agent_loop(history)\n        response_content = history[-1][\"content\"]\n        if isinstance(response_content, list):\n            for block in response_content:\n                if hasattr(block, \"text\"):\n                    print(block.text)\n        print()\n"
+      "source": "#!/usr/bin/env python3\n# Harness: the loop -- the model's first connection to the real world.\n\"\"\"\ns01_agent_loop.py - The Agent Loop\n\nThe entire secret of an AI coding agent in one pattern:\n\n    while stop_reason == \"tool_use\":\n        response = LLM(messages, tools)\n        execute tools\n        append results\n\n    +----------+      +-------+      +---------+\n    |   User   | ---> |  LLM  | ---> |  Tool   |\n    |  prompt  |      |       |      | execute |\n    +----------+      +---+---+      +----+----+\n                          ^               |\n                          |   tool_result |\n                          +---------------+\n                          (loop continues)\n\nThis is the core loop: feed tool results back to the model\nuntil the model decides to stop. Production agents layer\npolicy, hooks, and lifecycle controls on top.\n\"\"\"\n\nimport os\nimport subprocess\n\ntry:\n    import readline\n    # #143 UTF-8 backspace fix for macOS libedit\n    readline.parse_and_bind('set bind-tty-special-chars off')\n    readline.parse_and_bind('set input-meta on')\n    readline.parse_and_bind('set output-meta on')\n    readline.parse_and_bind('set convert-meta off')\n    readline.parse_and_bind('set enable-meta-keybindings on')\nexcept ImportError:\n    pass\n\nfrom anthropic import Anthropic\nfrom dotenv import load_dotenv\n\nload_dotenv(override=True)\n\nif os.getenv(\"ANTHROPIC_BASE_URL\"):\n    os.environ.pop(\"ANTHROPIC_AUTH_TOKEN\", None)\n\nclient = Anthropic(base_url=os.getenv(\"ANTHROPIC_BASE_URL\"))\nMODEL = os.environ[\"MODEL_ID\"]\n\nSYSTEM = f\"You are a coding agent at {os.getcwd()}. Use bash to solve tasks. Act, don't explain.\"\n\nTOOLS = [{\n    \"name\": \"bash\",\n    \"description\": \"Run a shell command.\",\n    \"input_schema\": {\n        \"type\": \"object\",\n        \"properties\": {\"command\": {\"type\": \"string\"}},\n        \"required\": [\"command\"],\n    },\n}]\n\n\ndef run_bash(command: str) -> str:\n    dangerous = [\"rm -rf /\", \"sudo\", \"shutdown\", \"reboot\", \"> /dev/\"]\n    if any(d in command for d in dangerous):\n        return \"Error: Dangerous command blocked\"\n    try:\n        r = subprocess.run(command, shell=True, cwd=os.getcwd(),\n                           capture_output=True, text=True, timeout=120)\n        out = (r.stdout + r.stderr).strip()\n        return out[:50000] if out else \"(no output)\"\n    except subprocess.TimeoutExpired:\n        return \"Error: Timeout (120s)\"\n    except (FileNotFoundError, OSError) as e:\n        return f\"Error: {e}\"\n\n\n# -- The core pattern: a while loop that calls tools until the model stops --\nloop_counter = 0\n\ndef agent_loop(messages: list):\n    while True:\n        global loop_counter\n        loop_counter += 1\n        print(f\"\\033[34mIn Agent Loop... (Iteration {loop_counter}) - Invoke LLM with messages count {len(messages)} \\033[0m\")\n        \n        response = client.messages.create(\n            model=MODEL, system=SYSTEM, messages=messages,\n            tools=TOOLS, max_tokens=8000,\n        )\n        # Append assistant turn\n        messages.append({\"role\": \"assistant\", \"content\": response.content})\n        # If the model didn't call a tool, we're done\n        if response.stop_reason != \"tool_use\":\n            return\n        # Execute each tool call, collect results\n        results = []\n        for block in response.content:\n            if block.type == \"tool_use\":\n                print(f\"\\033[33m$ {block.input['command']}\\033[0m\")\n                output = run_bash(block.input[\"command\"])\n                print(output[:200])\n                results.append({\"type\": \"tool_result\", \"tool_use_id\": block.id,\n                                \"content\": output})\n        messages.append({\"role\": \"user\", \"content\": results})\n\n\nif __name__ == \"__main__\":\n    history = []\n    while True:\n        try:\n            query = input(\"\\033[36ms01 _> \\033[0m\")\n        except (EOFError, KeyboardInterrupt):\n            break\n        if query.strip().lower() in (\"q\", \"exit\", \"\"):\n            break\n        history.append({\"role\": \"user\", \"content\": query})\n        agent_loop(history)\n        response_content = history[-1][\"content\"]\n        if isinstance(response_content, list):\n            for block in response_content:\n                if hasattr(block, \"text\"):\n                    print(block.text)\n        print()\n"
     },
     {
       "id": "s02",
@@ -830,6 +858,17 @@
   ],
   "diffs": [
     {
+      "from": "s00",
+      "to": "s01",
+      "newClasses": [],
+      "newFunctions": [
+        "run_bash",
+        "agent_loop"
+      ],
+      "newTools": [],
+      "locDelta": 2
+    },
+    {
       "from": "s01",
       "to": "s02",
       "newClasses": [],
@@ -844,7 +883,7 @@
         "write_file",
         "edit_file"
       ],
-      "locDelta": 26
+      "locDelta": 22
     },
     {
       "from": "s02",

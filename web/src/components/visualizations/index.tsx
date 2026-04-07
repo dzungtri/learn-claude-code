@@ -7,6 +7,7 @@ const visualizations: Record<
   string,
   React.LazyExoticComponent<React.ComponentType<{ title?: string }>>
 > = {
+  s00: lazy(() => import("./s00-llm-foundation")),
   s01: lazy(() => import("./s01-agent-loop")),
   s02: lazy(() => import("./s02-tool-dispatch")),
   s03: lazy(() => import("./s03-todo-write")),

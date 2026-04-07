@@ -54,14 +54,6 @@ TOOLS = [{
         "properties": {"command": {"type": "string"}},
         "required": ["command"],
     },
-},  {
-    "name": "get_weather",
-    "description": "Get the current weather for a location.",
-    "input_schema": {
-        "type": "object",
-        "properties": {"location": {"type": "string"}},
-        "required": ["location"],
-    },
 }
 ]
 
