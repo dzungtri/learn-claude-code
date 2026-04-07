@@ -1,3 +1,3 @@
-# agents/ - Harness implementations (s01-s12) + full reference (s_full)
-# Each file is self-contained and runnable: python agents/s01_agent_loop.py
+# agents/ - Harness implementations (s00-s12) + full reference (s_full)
+# Each file is self-contained and runnable: python agents/s00_llm_foundation.py
 # The model is the agent. These files are the harness.

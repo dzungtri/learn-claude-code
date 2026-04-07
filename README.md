@@ -158,9 +158,11 @@ First we fill the workshops. Then the farms, the hospitals, the factories. Then 
     the harness that makes the agent effective in a specific domain.
 ```
 
-**12 progressive sessions, from a simple loop to isolated autonomous execution.**
+**13 progressive sessions, from direct LLM inspection to isolated autonomous execution.**
 **Each session adds one harness mechanism. Each mechanism has one motto.**
 
+> **s00** &nbsp; *"Before the loop, inspect the reply"* &mdash; push `messages[]`, read `response.content[]`, inspect `stop_reason`
+>
 > **s01** &nbsp; *"One loop & Bash is all you need"* &mdash; one tool + one loop = an agent
 >
 > **s02** &nbsp; *"Adding a tool means adding one handler"* &mdash; the loop stays the same; new tools register into the dispatch map
@@ -237,7 +239,8 @@ cd learn-claude-code
 pip install -r requirements.txt
 cp .env.example .env   # Edit .env with your ANTHROPIC_API_KEY
 
-python agents/s01_agent_loop.py       # Start here
+python agents/s00_llm_foundation.py   # Start here
+python agents/s01_agent_loop.py
 python agents/s12_worktree_task_isolation.py  # Full progression endpoint
 python agents/s_full.py               # Capstone: all mechanisms combined
 ```
@@ -253,12 +256,18 @@ cd web && npm install && npm run dev   # http://localhost:3000
 ## Learning Path
 
 ```
+Phase 0: FOUNDATION
+===================
+s00  LLM Foundation          [1]
+     messages[] -> response.content[]
+     inspect stop_reason + block types
+
 Phase 1: THE LOOP                    Phase 2: PLANNING & KNOWLEDGE
 ==================                   ==============================
 s01  The Agent Loop          [1]     s03  TodoWrite               [5]
      while + stop_reason                  TodoManager + nag reminder
      |                                    |
-     +-> s02  Tool Use            [4]     s04  Subagents            [5]
+     +-> s02  Tool Use            [4]     s04  Subagents          [5]
               dispatch map: name->handler     fresh messages[] per child
                                               |
                                          s05  Skills               [5]
@@ -289,7 +298,7 @@ s08  Background Tasks        [6]     s10  Team Protocols          [12]
 ```
 learn-claude-code/
 |
-|-- agents/                        # Python reference implementations (s01-s12 + s_full capstone)
+|-- agents/                        # Python reference implementations (s00-s12 + s_full capstone)
 |-- docs/{en,zh,ja}/               # Mental-model-first documentation (3 languages)
 |-- web/                           # Interactive learning platform (Next.js)
 |-- skills/                        # Skill files for s05
@@ -303,6 +312,7 @@ Available in [English](./docs/en/) | [中文](./docs/zh/) | [日本語](./docs/j
 
 | Session | Topic | Motto |
 |---------|-------|-------|
+| [s00](./docs/en/s00-llm-foundation.md) | LLM Foundation | *Before the loop, inspect the reply* |
 | [s01](./docs/en/s01-the-agent-loop.md) | The Agent Loop | *One loop & Bash is all you need* |
 | [s02](./docs/en/s02-tool-use.md) | Tool Use | *Adding a tool means adding one handler* |
 | [s03](./docs/en/s03-todo-write.md) | TodoWrite | *An agent without a plan drifts* |
