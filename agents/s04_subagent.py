@@ -24,6 +24,7 @@ Key insight: "Process isolation gives context isolation for free."
 """
 
 import os
+from pyexpat.errors import messages
 import subprocess
 from pathlib import Path
 
@@ -118,6 +119,7 @@ CHILD_TOOLS = [
 def run_subagent(prompt: str) -> str:
     sub_messages = [{"role": "user", "content": prompt}]  # fresh context
     for _ in range(30):  # safety limit
+        print(f"\033[34mSubagent iteration {_ + 1}/max=30\033[0m")
         response = client.messages.create(
             model=MODEL, system=SUBAGENT_SYSTEM, messages=sub_messages,
             tools=CHILD_TOOLS, max_tokens=8000,
@@ -130,6 +132,10 @@ def run_subagent(prompt: str) -> str:
             if block.type == "tool_use":
                 handler = TOOL_HANDLERS.get(block.name)
                 output = handler(**block.input) if handler else f"Unknown tool: {block.name}"
+                
+                print(f"::__> {block.name}:")
+                print(output[:200])
+                
                 results.append({"type": "tool_result", "tool_use_id": block.id, "content": str(output)[:50000]})
         sub_messages.append({"role": "user", "content": results})
     # Only the final text returns to the parent -- child context is discarded
@@ -143,8 +149,14 @@ PARENT_TOOLS = CHILD_TOOLS + [
 ]
 
 
+loop_counter = 0
 def agent_loop(messages: list):
+    loop_counter = 1
     while True:
+        
+        print(f"\033[34mIn Agent Loop... (Iteration {loop_counter}) - Invoke LLM with messages count {len(messages)} \033[0m")
+        loop_counter += 1
+        
         response = client.messages.create(
             model=MODEL, system=SYSTEM, messages=messages,
             tools=PARENT_TOOLS, max_tokens=8000,
