@@ -78,8 +78,14 @@ def run_bash(command: str) -> str:
 
 
 # -- The core pattern: a while loop that calls tools until the model stops --
+loop_counter = 0
+
 def agent_loop(messages: list):
     while True:
+        global loop_counter
+        loop_counter += 1
+        print(f"\033[34mIn Agent Loop... (Iteration {loop_counter}) - Invoke LLM with messages count {len(messages)} \033[0m")
+        
         response = client.messages.create(
             model=MODEL, system=SYSTEM, messages=messages,
             tools=TOOLS, max_tokens=8000,
@@ -105,7 +111,7 @@ if __name__ == "__main__":
     history = []
     while True:
         try:
-            query = input("\033[36ms01 >> \033[0m")
+            query = input("\033[36ms01 _> \033[0m")
         except (EOFError, KeyboardInterrupt):
             break
         if query.strip().lower() in ("q", "exit", ""):
