@@ -51,6 +51,7 @@ def safe_path(p: str) -> Path:
         raise ValueError(f"Path escapes workspace: {p}")
     return path
 
+
 def run_bash(command: str) -> str:
     dangerous = ["rm -rf /", "sudo", "shutdown", "reboot", "> /dev/"]
     if any(d in command for d in dangerous):
@@ -65,6 +66,7 @@ def run_bash(command: str) -> str:
     except (FileNotFoundError, OSError) as e:
         return f"Error: {e}"
 
+
 def run_read(path: str, limit: int = None) -> str:
     try:
         lines = safe_path(path).read_text().splitlines()
@@ -74,6 +76,7 @@ def run_read(path: str, limit: int = None) -> str:
     except Exception as e:
         return f"Error: {e}"
 
+
 def run_write(path: str, content: str) -> str:
     try:
         fp = safe_path(path)
@@ -82,6 +85,7 @@ def run_write(path: str, content: str) -> str:
         return f"Wrote {len(content)} bytes"
     except Exception as e:
         return f"Error: {e}"
+
 
 def run_edit(path: str, old_text: str, new_text: str) -> str:
     try:
@@ -96,10 +100,10 @@ def run_edit(path: str, old_text: str, new_text: str) -> str:
 
 
 TOOL_HANDLERS = {
-    "bash":       lambda **kw: run_bash(kw["command"]),
-    "read_file":  lambda **kw: run_read(kw["path"], kw.get("limit")),
+    "bash": lambda **kw: run_bash(kw["command"]),
+    "read_file": lambda **kw: run_read(kw["path"], kw.get("limit")),
     "write_file": lambda **kw: run_write(kw["path"], kw["content"]),
-    "edit_file":  lambda **kw: run_edit(kw["path"], kw["old_text"], kw["new_text"]),
+    "edit_file": lambda **kw: run_edit(kw["path"], kw["old_text"], kw["new_text"]),
 }
 
 # Child gets all base tools except task (no recursive spawning)
@@ -116,10 +120,10 @@ CHILD_TOOLS = [
 
 
 # -- Subagent: fresh context, filtered tools, summary-only return --
-def run_subagent(prompt: str) -> str:
+def run_subagent(name: str, prompt: str) -> str:
     sub_messages = [{"role": "user", "content": prompt}]  # fresh context
     for _ in range(30):  # safety limit
-        print(f"\033[34mSubagent iteration {_ + 1}/max=30\033[0m")
+        print(f"\033[34mSubagent {name} iteration {_ + 1}/max=30\033[0m")
         response = client.messages.create(
             model=MODEL, system=SUBAGENT_SYSTEM, messages=sub_messages,
             tools=CHILD_TOOLS, max_tokens=8000,
@@ -131,12 +135,14 @@ def run_subagent(prompt: str) -> str:
         for block in response.content:
             if block.type == "tool_use":
                 handler = TOOL_HANDLERS.get(block.name)
-                output = handler(**block.input) if handler else f"Unknown tool: {block.name}"
-                
+                output = handler(
+                    **block.input) if handler else f"Unknown tool: {block.name}"
+
                 print(f"::__> {block.name}:")
                 print(output[:200])
-                
-                results.append({"type": "tool_result", "tool_use_id": block.id, "content": str(output)[:50000]})
+
+                results.append(
+                    {"type": "tool_result", "tool_use_id": block.id, "content": str(output)[:50000]})
         sub_messages.append({"role": "user", "content": results})
     # Only the final text returns to the parent -- child context is discarded
     return "".join(b.text for b in response.content if hasattr(b, "text")) or "(no summary)"
@@ -145,18 +151,26 @@ def run_subagent(prompt: str) -> str:
 # -- Parent tools: base tools + task dispatcher --
 PARENT_TOOLS = CHILD_TOOLS + [
     {"name": "task", "description": "Spawn a subagent with fresh context. It shares the filesystem but not conversation history.",
-     "input_schema": {"type": "object", "properties": {"prompt": {"type": "string"}, "description": {"type": "string", "description": "Short description of the task"}}, "required": ["prompt"]}},
+     "input_schema": {"type": "object", "properties": {
+         "name": {"type": "string", "description": "Short name for this subagent (for logging)"},
+         "prompt": {"type": "string", "description": "Instructions for the subagent"},
+         "description": {"type": "string", "description": "Short description of the task"}},
+         "required": ["prompt", "name"]}
+     },
 ]
 
 
 loop_counter = 0
+
+
 def agent_loop(messages: list):
     loop_counter = 1
     while True:
-        
-        print(f"\033[34mIn Agent Loop... (Iteration {loop_counter}) - Invoke LLM with messages count {len(messages)} \033[0m")
+
+        print(
+            f"\033[34mIn Agent Loop... (Iteration {loop_counter}) - Invoke LLM with messages count {len(messages)} \033[0m")
         loop_counter += 1
-        
+
         response = client.messages.create(
             model=MODEL, system=SYSTEM, messages=messages,
             tools=PARENT_TOOLS, max_tokens=8000,
@@ -170,13 +184,16 @@ def agent_loop(messages: list):
                 if block.name == "task":
                     desc = block.input.get("description", "subtask")
                     prompt = block.input.get("prompt", "")
-                    print(f"> task ({desc}): {prompt[:80]}")
-                    output = run_subagent(prompt)
+                    name = block.input.get("name", "subagent")
+                    print(f"> task ( -> {name} {desc}): {prompt[:80]}")
+                    output = run_subagent(name, prompt)
                 else:
                     handler = TOOL_HANDLERS.get(block.name)
-                    output = handler(**block.input) if handler else f"Unknown tool: {block.name}"
+                    output = handler(
+                        **block.input) if handler else f"Unknown tool: {block.name}"
                 print(f"  {str(output)[:200]}")
-                results.append({"type": "tool_result", "tool_use_id": block.id, "content": str(output)})
+                results.append(
+                    {"type": "tool_result", "tool_use_id": block.id, "content": str(output)})
         messages.append({"role": "user", "content": results})
 
 
